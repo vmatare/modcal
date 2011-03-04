@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:client="http://www.mulesoft.org/schema/mule/client" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xsi:schemaLocation="
+          http://www.mulesoft.org/schema/mule/client http://www.mulesoft.org/schema/mule/client/3.1/mule-client.xsd
+          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.1/mule.xsd
+          http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/3.1/mule-vm.xsd">
+
+	<vm:endpoint name="ModcalUI" path="UI" />
+	<vm:endpoint name="ModelController" path="Controller" />
+	<vm:endpoint name="ProgressInfo" path="Progress" />
+
+	<flow name="Input">
+		<vm:inbound-endpoint ref="ModcalUI" />
+		<component class="org.modcal.muleComponents.InitSampler" />
+		<component class="org.modcal.muleComponents.InitModel" />
+		<vm:outbound-endpoint ref="ModelController" />
+	</flow>
+
+	<flow name="Calibration">
+		<vm:inbound-endpoint ref="ModelController" />
+		<component class="org.modcal.muleComponents.RunModel" />
+		<component class="org.modcal.muleComponents.CollectResult" />
+		<choice>
+			<when expression="payload instanceof org.modcal.CalibrationRequest"
+				evaluator="groovy">
+				<all>
+					<vm:outbound-endpoint ref="ModelController" />
+					<vm:outbound-endpoint ref="ProgressInfo" />
+				</all>
+			</when>
+			<otherwise>
+				<vm:outbound-endpoint ref="ProgressInfo" />
+			</otherwise>
+		</choice>
+	</flow>
+
+</mule>
