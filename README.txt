@@ -149,10 +149,11 @@ ModCal should then run the model once with each sample and tell you the
 estimated quality of the generated output (in relation to your observed
 values) after each iteration.
 
-After all samples have been used, ModCal will store the results in modcal.out in
-the current directory (this is also customizable in modcal.properties).
+After all samples have been used, ModCal will store the results in modcal.out
+in the current directory (this is also customizable in modcal.properties).
 
-The output file contains two blocks, each containing the results from all iterations.
+The output file contains two blocks, each containing the results from all
+iterations.
 In the first block the rows are ordered according to the Nash-Sutcliffe
 coefficient, and in the second block they're ordered by the coefficient of
 determination R^2.
