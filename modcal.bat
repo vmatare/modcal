@@ -1,5 +1,4 @@
 @echo off
-chcp 1252 > NUL
 set CLASSPATH=%CLASSPATH%;mule-standalone-3.1.0\conf\*
 set CLASSPATH=%CLASSPATH%;mule-standalone-3.1.0\lib\boot\*
 set CLASSPATH=%CLASSPATH%;mule-standalone-3.1.0\lib\endorsed\*
