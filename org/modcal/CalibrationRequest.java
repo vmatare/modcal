@@ -49,7 +49,7 @@ public class CalibrationRequest implements Serializable {
 	public CalibrationRequest(Sampler<?> sampler, Model<? extends ModelInput> model, String observedPath) {
 		this.sampler = sampler;
 		this.model = model;
-		iteration = 0;
+		iteration = 1;
 		result = Collections.synchronizedList(new LinkedList<ModelOutput>());
 		observed = new ObservationData(observedPath);
 	}

@@ -91,15 +91,18 @@ public abstract class AbstractModelOutput implements Serializable, ModelOutput {
 				se1 = simulated.lowerEntry(me.getKey());
 				se2 = simulated.higherEntry(me.getKey());
 				if (se1 == null || se2 == null) throw new IncompleteOutputException();
+				
+				//*
+				double d = (
+						(se2.getValue() - se1.getValue())
+						/ (se2.getKey() - se1.getKey())
+				)
+				* (me.getKey() - se1.getKey())
+				+ se1.getValue();
+				
+				processedSeries.put(me.getKey(), d);
 				//*/
-				processedSeries.put(me.getKey(),
-						(
-								(se2.getValue() - se1.getValue())
-								/ (se2.getKey() - se1.getKey())
-						)
-						* (me.getKey() - se1.getKey())
-						+ se1.getValue()
-						); //*/
+				
 				/*if (Math.abs(se1.getKey() - me.getKey()) < Math.abs(se2.getKey() - me.getKey()))
 					processedSeries.put(me.getKey(), se1.getValue());
 				else processedSeries.put(me.getKey(), se2.getValue()); //*/
@@ -149,12 +152,12 @@ public abstract class AbstractModelOutput implements Serializable, ModelOutput {
 	
 	public String toString() {
 		StringBuilder rv = new StringBuilder();
-		rv.append(NumericString.pad(getIteration(), 5) + " ");
-		rv.append(NumericString.pad(getNS(), 17) + " ");
-		rv.append(NumericString.pad(getRSquared(), 17) + " ");
+		rv.append(String.format("%5d", getIteration()) + " ");
+		rv.append(String.format("%17.11g", getNS()) + " ");
+		rv.append(String.format("%17.11g", getRSquared()) + " ");
 		
 		for (Double k : simulated.values()) {
-			rv.append(NumericString.pad(k, 17));
+			rv.append(String.format("%17.11g", k));
 			rv.append(" ");
 		}
 		return rv.toString();

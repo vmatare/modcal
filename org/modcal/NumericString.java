@@ -50,16 +50,9 @@ public class NumericString implements CharSequence {
 		}
 	}
 	
-	public static String pad(Number v, int len) {
-		len -= 1;
-		StringBuilder rv = new StringBuilder();
-		if (v.doubleValue() >= 0) rv.append(" ");
-		rv.append(v);
-		if (rv.length() > len) rv.setLength(len);
-		else if (rv.length() < len) for (int i = rv.length(); i <len; i++)
-			rv.append(" ");
-		return rv.toString();
-	}
+/*	public static String pad(Number v, int len) {
+		return String.format("% " + len + "g", v);
+	} */
 	
 	public char charAt(int index) { return value.charAt(index); }
 	public int length() { return value.length(); }

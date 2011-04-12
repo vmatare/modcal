@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * This class represents the ultimate result of a calibration - 
- * @author ich
+ * @author Victor Mataré
  *
  */
 public class CalibrationResult {
@@ -45,8 +45,9 @@ public class CalibrationResult {
 	SortedSet<ModelOutput> rSquaredResult;
 	List<Double> observed;
 	List<Double> time;
-	private final static String header =    " i    NS               R^2              ";
-	private final static String obsHeader = "                     Observed Values:  ";
+	private final static String header =    "                                      t:  ";
+	private final static String obsHeader = "                        Observed Values:  ";
+	private final static String colHeader = "    i       NS                R^2\n";
 	
 	public CalibrationResult(CalibrationRequest rq) {
 		nsResult = new ConcurrentSkipListSet<ModelOutput>(new AbstractModelOutput.CompareNS());
@@ -62,28 +63,30 @@ public class CalibrationResult {
 		
 		rv.append(header);
 		for (Double d : time)
-			rv.append("t=" + NumericString.pad(d, 17).substring(1));
+			rv.append(String.format("%17.11g ", d));
 		rv.append("\r\n");
 		
 		rv.append(obsHeader);
 		for (Double d : observed)
-			rv.append(NumericString.pad(d, 17) + " ");
+			rv.append(String.format("%17.11g ", d));
 		rv.append("\r\n");
 		
+		rv.append(colHeader);
 		for (ModelOutput r : nsResult)
 			rv.append(r + "\r\n");
 		rv.append("\r\n");
 		
 		rv.append(header);
 		for (Double d : time)
-			rv.append("t=" + NumericString.pad(d, 17).substring(1));
+			rv.append(String.format("%17.11g ", d));
 		rv.append("\r\n");
 		
 		rv.append(obsHeader);
 		for (Double d : observed)
-			rv.append(NumericString.pad(d, 17) + " ");
+			rv.append(String.format("%17.11g ", d));
 		rv.append("\r\n");
 		
+		rv.append(colHeader);
 		for (ModelOutput r : rSquaredResult)
 			rv.append(r + "\r\n");
 		rv.append("\r\n");
