@@ -6,4 +6,4 @@ set CLASSPATH=%CLASSPATH%;mule-standalone-3.1.0\lib\mule\*
 set CLASSPATH=%CLASSPATH%;mule-standalone-3.1.0\lib\opt\*
 set CLASSPATH=%CLASSPATH%;mule-standalone-3.1.0\lib\user\*
 
-java org.modcal.ModCal %1 %2 %3 %4
+java org.modcal.UI.ModCal %1 %2 %3 %4
