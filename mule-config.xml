@@ -6,10 +6,17 @@
           http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.1/mule.xsd
           http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/3.1/mule-vm.xsd">
 
+	<!-- This is where you stick requests in: -->
 	<vm:endpoint name="ModcalUI" path="UI" />
+	
+	<!-- Entry point for the calibration flow -->
 	<vm:endpoint name="ModelController" path="Controller" />
+	
+	<!-- Listen here for the result of each simulation run -->
 	<vm:endpoint name="ProgressInfo" path="Progress" />
 
+	<!-- This is a separate flow so that the components that initialize data 
+	can run independently of the calibration -->
 	<flow name="Input">
 		<vm:inbound-endpoint ref="ModcalUI" />
 		<component class="org.modcal.muleComponents.InitSampler" />
@@ -17,6 +24,8 @@
 		<vm:outbound-endpoint ref="ModelController" />
 	</flow>
 
+	<!-- Simulate, stick the result into the request, copy the request with
+	incomplete results to the progress info, repeat until done. -->
 	<flow name="Calibration">
 		<vm:inbound-endpoint ref="ModelController" />
 		<component class="org.modcal.muleComponents.RunModel" />

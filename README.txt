@@ -156,7 +156,8 @@ The output file contains two blocks, each containing the results from all
 iterations.
 In the first block the rows are ordered according to the Nash-Sutcliffe
 coefficient, and in the second block they're ordered by the coefficient of
-determination R^2.
+determination R^2. To find out the input parameters that were used in a
+specific iteration you have to look in par_val.sf2 in SUFI2.IN.
 
 
 
