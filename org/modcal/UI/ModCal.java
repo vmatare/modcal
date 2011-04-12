@@ -56,6 +56,7 @@ public class ModCal {
 "             in T_LEVEL.OUT.\n\n";
 	
 	public static void main(String[] args) throws Exception {
+		System.out.println("ModCal 0.10 - (C) 04-2011 Victor Matare");
 		
 		if (args.length != 2) {
 			System.out.println(help);
