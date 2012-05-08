@@ -27,12 +27,15 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.output;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.io.IOException;
+
 import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
+
+import org.modcal.data.DoubleSample;
+import org.modcal.data.ObservationData;
 
 /**
  * This class represents the ultimate result of a calibration - 
@@ -43,32 +46,36 @@ public class CalibrationResult {
 	
 	SortedSet<ModelOutput> nsResult;
 	SortedSet<ModelOutput> rSquaredResult;
-	List<Double> observed;
-	List<Double> time;
+	ObservationData observation;
 	private final static String header =    "                                      t:  ";
 	private final static String obsHeader = "                        Observed Values:  ";
 	private final static String colHeader = "    i       NS                R^2\n";
 	
-	public CalibrationResult(CalibrationRequest rq) {
-		nsResult = new ConcurrentSkipListSet<ModelOutput>(new AbstractModelOutput.CompareNS());
-		nsResult.addAll(rq.getResult());
-		rSquaredResult = new ConcurrentSkipListSet<ModelOutput>(new AbstractModelOutput.CompareRSquared());
-		rSquaredResult.addAll(rq.getResult());
-		observed = new LinkedList<Double>(rq.getObserved().getData().values());
-		time = new LinkedList<Double>(rq.getObserved().getData().keySet());
+	public CalibrationResult(ObservationData obs) throws IOException {
+		nsResult = new ConcurrentSkipListSet<ModelOutput>(
+				new ModelOutput.CompareNS());
+		rSquaredResult = new ConcurrentSkipListSet<ModelOutput>(
+				new ModelOutput.CompareRSquared());
+		observation = obs;
 	}
+	
+	public void add(ModelOutput mo) {
+		nsResult.add(mo);
+		rSquaredResult.add(mo);		
+	}
+	
 
 	public String toString() {
 		StringBuilder rv = new StringBuilder();
 		
 		rv.append(header);
-		for (Double d : time)
+		for (Double d : observation.getData().keySet())
 			rv.append(String.format("%17.11g ", d));
 		rv.append("\r\n");
 		
 		rv.append(obsHeader);
-		for (Double d : observed)
-			rv.append(String.format("%17.11g ", d));
+		for (DoubleSample d : observation.getData().values())
+			rv.append(String.format("%17.11g ", d.values().iterator().next()));
 		rv.append("\r\n");
 		
 		rv.append(colHeader);
@@ -77,13 +84,13 @@ public class CalibrationResult {
 		rv.append("\r\n");
 		
 		rv.append(header);
-		for (Double d : time)
+		for (Double d : observation.getData().keySet())
 			rv.append(String.format("%17.11g ", d));
 		rv.append("\r\n");
 		
 		rv.append(obsHeader);
-		for (Double d : observed)
-			rv.append(String.format("%17.11g ", d));
+		for (DoubleSample d : observation.getData().values())
+			rv.append(String.format("%17.11g ", d.values().iterator().next()));
 		rv.append("\r\n");
 		
 		rv.append(colHeader);

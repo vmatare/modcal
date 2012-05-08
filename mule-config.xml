@@ -1,47 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:client="http://www.mulesoft.org/schema/mule/client" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
-	xsi:schemaLocation="
-          http://www.mulesoft.org/schema/mule/client http://www.mulesoft.org/schema/mule/client/3.1/mule-client.xsd
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans"
+	xmlns:cxf="http://www.mulesoft.org/schema/mule/cxf"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/client http://www.mulesoft.org/schema/mule/client/3.1/mule-client.xsd
           http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/3.1/mule.xsd
-          http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/3.1/mule-vm.xsd">
+          http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/3.1/mule-vm.xsd
+          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/3.1/mule-http.xsd
+          http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+          http://www.mulesoft.org/schema/mule/cxf http://www.mulesoft.org/schema/mule/cxf/3.1/mule-cxf.xsd">
 
-	<!-- This is where you stick requests in: -->
-	<vm:endpoint name="ModcalUI" path="UI" />
-	
-	<!-- Entry point for the calibration flow -->
-	<vm:endpoint name="ModelController" path="Controller" />
-	
-	<!-- Listen here for the result of each simulation run -->
-	<vm:endpoint name="ProgressInfo" path="Progress" />
+	<!-- This is where you put in samples and receive the result: -->
+	<vm:endpoint name="SamplerVM" path="Sampler" />
+	<http:endpoint name="SamplerHTTP" host="localhost" port="3080"
+		path="Hydrus1DService" />
 
-	<!-- This is a separate flow so that the components that initialize data 
-	can run independently of the calibration -->
-	<flow name="Input">
-		<vm:inbound-endpoint ref="ModcalUI" />
-		<component class="org.modcal.muleComponents.InitSampler" />
-		<component class="org.modcal.muleComponents.InitModel" />
-		<vm:outbound-endpoint ref="ModelController" />
+
+	<flow name="SimulateLocal">
+		<vm:inbound-endpoint ref="SamplerVM"
+			exchange-pattern="request-response" />
+		<component class="org.modcal.model.RunHydrus1D" />
 	</flow>
 
-	<!-- Simulate, stick the result into the request, copy the request with
-	incomplete results to the progress info, repeat until done. -->
-	<flow name="Calibration">
-		<vm:inbound-endpoint ref="ModelController" />
-		<component class="org.modcal.muleComponents.RunModel" />
-		<component class="org.modcal.muleComponents.CollectResult" />
-		<choice>
-			<when expression="payload instanceof org.modcal.CalibrationRequest"
-				evaluator="groovy">
-				<all>
-					<vm:outbound-endpoint ref="ModelController" />
-					<vm:outbound-endpoint ref="ProgressInfo" />
-				</all>
-			</when>
-			<otherwise>
-				<vm:outbound-endpoint ref="ProgressInfo" />
-			</otherwise>
-		</choice>
+	<flow name="SimulateHTTP">
+		<http:inbound-endpoint ref="SamplerHTTP">
+			<cxf:jaxws-service serviceClass="org.modcal.model.Hydrus1D"/>
+				<!-- wsdlLocation="Hydrus1DService.wsdl" /> -->
+		</http:inbound-endpoint>
+		<component class="org.modcal.model.RunHydrus1DWeb" />
 	</flow>
 
 </mule>

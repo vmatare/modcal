@@ -27,26 +27,29 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.output;
 
-import java.io.IOException;
 import java.io.Serializable;
 
 import java.util.Comparator;
 import java.util.Map;
-import java.util.NavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+
+import org.modcal.data.DoubleSample;
+import org.modcal.data.ObservationData;
+import org.modcal.data.TimeSeries;
 
 
-public abstract class AbstractModelOutput implements Serializable, ModelOutput {
+public class ModelOutput implements Serializable {
 	
 	private static final long serialVersionUID = 3569717711794570180L;
-	protected NavigableMap<Double, Double> simulated;
+	private TimeSeries simulated;
+	private TimeSeries observed;
 	private double rSquaredQuality;
 	private double nsQuality;
-	private String targetParam;
 	private int iteration;
 	
+	public ModelOutput() {}
+		
 	public static class CompareRSquared implements Comparator<ModelOutput> {
 		public int compare(ModelOutput arg0, ModelOutput arg1) {
 			return arg1.compareRSquared(arg0);
@@ -66,88 +69,91 @@ public abstract class AbstractModelOutput implements Serializable, ModelOutput {
 	public int compareNS(ModelOutput o) {
 		return this.getNS().compareTo(o.getNS());
 	}
-
-	public NavigableMap<Double, Double> getOutput() {
+	
+	public void setSimulated(TimeSeries ts) {
+		simulated = ts;
+	}
+	
+	public TimeSeries getSimulated() {
 		return simulated;
 	}
-	protected void setOutput(NavigableMap<Double, Double> o) {
-		simulated = o;
-	}
-	public abstract void init() throws IOException;
 	
 	public Double getRSquared() { return rSquaredQuality; }
 	public Double getNS() { return nsQuality; }
 	
 	
-	public void intersect(NavigableMap<Double, Double> measured) {
-		Map.Entry<Double, Double> se1, se2;
-		NavigableMap<Double, Double> processedSeries = 
-			new ConcurrentSkipListMap<Double, Double>();
+	public void mapObservation(ObservationData obs) {
+		observed = obs.getData();
+		Map.Entry<Double, DoubleSample> se1, se2;
+		TimeSeries interpolatedSeries = 
+			new TimeSeries();
 
-		for (Map.Entry<Double, Double> me : measured.entrySet()) {
+		for (Map.Entry<Double, DoubleSample> me : observed.entrySet()) {
 			if (simulated.containsKey(me.getKey()))
-				processedSeries.put(me.getKey(), simulated.get(me.getKey()));
+				interpolatedSeries.put(me.getKey(), simulated.get(me.getKey()));
 			else {
 				se1 = simulated.lowerEntry(me.getKey());
 				se2 = simulated.higherEntry(me.getKey());
 				if (se1 == null || se2 == null) throw new IncompleteOutputException();
 				
-				//*
-				double d = (
-						(se2.getValue() - se1.getValue())
-						/ (se2.getKey() - se1.getKey())
-				)
-				* (me.getKey() - se1.getKey())
-				+ se1.getValue();
+				DoubleSample interpolatedSample = new DoubleSample();
+				for (String paramName : se1.getValue().getParamNames()) {
+					//double numerator = (se2.getValue().valueOf(paramName)
+					//		- se2.getValue().valueOf(paramName));
+					//double denominator = (se2.getKey() - se1.getKey());
+					double interpolatedValue = (
+							(se2.getValue().valueOf(paramName) 
+									- se2.getValue().valueOf(paramName)
+							)
+							/ (se2.getKey() - se1.getKey()
+							) 
+							* (me.getKey() - se1.getKey())
+							+ se1.getValue().valueOf(paramName));
+					interpolatedSample.put(paramName, interpolatedValue);
+				}
 				
-				processedSeries.put(me.getKey(), d);
-				//*/
-				
-				/*if (Math.abs(se1.getKey() - me.getKey()) < Math.abs(se2.getKey() - me.getKey()))
-					processedSeries.put(me.getKey(), se1.getValue());
-				else processedSeries.put(me.getKey(), se2.getValue()); //*/
+				interpolatedSeries.put(me.getKey(), interpolatedSample);
 			}
 		}
-		simulated = processedSeries;
-		calcQuality(measured);
+		simulated = interpolatedSeries;
 	}
 	
-	private void calcQuality(Map<Double, Double> measured) {
+	public void calcQuality() {
+		
+		if (simulated.firstEntry().getValue().size() > 1)
+			throw new RuntimeException("Can't calculate output quality for more than one parameter");
+
 		double num = 0, avgS = 0, avgM = 0, denom1 = 0, denom2 = 0;
 		denom1 = 0d;
 		
-		for (Double i : simulated.values()) avgS += i;
+		for (DoubleSample s : simulated.values()) avgS += s.values().iterator().next();
 		avgS /= simulated.size();
 		
-		for (Double i : measured.values()) avgM += i;
-		avgM /= measured.size();
+		for (DoubleSample s : observed.values()) avgM += s.values().iterator().next();
+		avgM /= observed.size();
 		
-		for (Map.Entry<Double, Double> me : measured.entrySet())
-			num += (me.getValue() - avgM) * (simulated.get(me.getKey()) - avgS);
+		for (Map.Entry<Double, DoubleSample> me : observed.entrySet())
+			num += ((me.getValue().values().iterator().next() - avgM)
+					* (simulated.get(me.getKey()).values().iterator().next() - avgS));
 		
-		for (Double mv : measured.values())
-			denom1 += (mv - avgM) * (mv - avgM);
-		for (Double sv : simulated.values())
-			denom2 += (sv - avgS) * (sv - avgS);
+		for (DoubleSample mv : observed.values())
+			denom1 += ((mv.values().iterator().next() - avgM)
+					* (mv.values().iterator().next() - avgM));
+		for (DoubleSample sv : simulated.values())
+			denom2 += ((sv.values().iterator().next() - avgS)
+					* (sv.values().iterator().next() - avgS));
 		
 		rSquaredQuality = (num * num) / (denom1 * denom2);
 		
 		num = 0;
 		
-		for (Map.Entry<Double, Double> me : measured.entrySet()) {
-			double tmp = (me.getValue() - simulated.get(me.getKey()));
+		for (Map.Entry<Double, DoubleSample> me : observed.entrySet()) {
+			double tmp = (me.getValue().values().iterator().next()
+					- simulated.get(me.getKey()).values().iterator().next());
 			num += tmp * tmp;
 		}
 		
 		nsQuality = 1 - (num / denom1);
-	}
-
-	public void setTargetParam(String targetParam) {
-		this.targetParam = targetParam;
-	}
-
-	public String getTargetParam() {
-		return targetParam;
 	}
 	
 	public String toString() {
@@ -156,8 +162,8 @@ public abstract class AbstractModelOutput implements Serializable, ModelOutput {
 		rv.append(String.format("%17.11g", getNS()) + " ");
 		rv.append(String.format("%17.11g", getRSquared()) + " ");
 		
-		for (Double k : simulated.values()) {
-			rv.append(String.format("%17.11g", k));
+		for (DoubleSample k : simulated.values()) {
+			rv.append(String.format("%17.11g", k.values().iterator().next()));
 			rv.append(" ");
 		}
 		return rv.toString();
@@ -165,9 +171,8 @@ public abstract class AbstractModelOutput implements Serializable, ModelOutput {
 	
 	public String shortInfo() {
 		StringBuilder rv = new StringBuilder();
-		rv.append("Iteration #" + iteration + ": ");
-		rv.append("R^2 = " + rSquaredQuality + "; ");
-		rv.append("NS  = " + nsQuality);
+		rv.append("R^2 = " + String.format("%3.4g", rSquaredQuality) + "; ");
+		rv.append("NS  = " + String.format("%3.4g", nsQuality));
 		return rv.toString();
 	}
 	
@@ -176,5 +181,13 @@ public abstract class AbstractModelOutput implements Serializable, ModelOutput {
 	}
 	public int getIteration() {
 		return iteration;
+	}
+
+	public TimeSeries getObserved() {
+		return observed;
+	}
+
+	public void setObserved(TimeSeries observed) {
+		this.observed = observed;
 	}
 }

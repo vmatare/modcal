@@ -27,26 +27,34 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.data;
 
-import java.io.IOException;
-import java.io.Serializable;
-
-import java.util.concurrent.Callable;
+import java.util.HashMap;
+import java.util.List;
 
 
-public abstract class Model<InT extends ModelInput> implements Serializable, Callable<ModelOutput> {
+
+/**
+ * A map of Strings to {@link NumericString}s, actually a subclass of HashMap.
+ * @author Victor Mataré
+ *
+ */
+
+public class NumericSample extends HashMap<String, NumericString>
+implements ParameterSample<NumericString> {
+
+	private static final long serialVersionUID = -7809762664103118012L;
 	
-	private static final long serialVersionUID = 6285825878289849130L;
-	private InT input;
+	public NumericSample() { super(); }
 	
-	public Model() {}
-	
-	public void setInput(InT data) {
-		this.input = data;
+	public NumericSample(List<String> keys, List<String> values) {
+		this();
+		for (int i = 0; i < keys.size(); i++)
+			this.put(keys.get(i), values.get(i));
 	}
-	public InT getInput() { return input; }
-	public abstract void init() throws Exception;
+
+	public NumericString put(String key, CharSequence value) {
+		return super.put(key, new NumericString(value));
+	}
 	
-	public abstract ModelOutput call() throws IOException, InterruptedException;
 }

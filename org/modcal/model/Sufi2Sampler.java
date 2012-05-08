@@ -27,7 +27,7 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.model;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -35,27 +35,29 @@ import java.io.IOException;
 
 import java.util.Vector;
 
+import org.modcal.Settings;
+import org.modcal.data.BrokenDataException;
+import org.modcal.data.NumericSample;
+import org.modcal.data.NumericString;
+import org.modcal.data.ParameterNotFoundException;
+
 
 /**
  * This class implements a {@link Sampler} based on the output of SUFI2_LH_sample.exe
  * @author Victor Mataré
  *
  */
-public class Sufi2Sampler extends Sampler<NumericSample> {
+public class Sufi2Sampler {
 
-	private static final long serialVersionUID = -8049950307118999123L;
 	private BufferedReader fileReader;
 	private String basePath, valPath, infPath;
 	private Vector<String> paramNames;
 	
-	public Sufi2Sampler() {
-		basePath = Settings.getString("Sufi2Sampler.path").replaceFirst("\\$", "");
+	public Sufi2Sampler() throws IOException, InterruptedException {
+		basePath = Settings.getString("Sufi2.path").replaceFirst("\\$", "");
 		valPath = basePath + "\\SUFI2.in\\par_val.sf2";
 		infPath = basePath + "\\SUFI2.in\\par_inf.sf2";
 		paramNames = new Vector<String>();
-	}
-	
-	public void init() throws IOException, InterruptedException {
 		String[] cmd = {
 				"c:\\windows\\system32\\cmd.exe",
 				"/C",
@@ -79,7 +81,7 @@ public class Sufi2Sampler extends Sampler<NumericSample> {
 		tokens = line.split("\\s+");
 
 		if (tokens.length - 1 != getParamNames().size())
-			throw new ParameterMismatchException(valPath + ": Can't match the" +
+			throw new ParameterNotFoundException(valPath + ": Can't match the" +
 					"parameters " + getParamNames() + " to this line: \"" +
 							line + "\"");
 		

@@ -27,12 +27,15 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.data;
 
-public class BrokenDataException extends RuntimeException {
+public class ParameterNotFoundException extends RuntimeException {
 
-	private static final long serialVersionUID = 6262044964762564510L;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -5630986418248630335L;
 	
-	public BrokenDataException(String message) { super(message); }
+	public ParameterNotFoundException(String message) { super(message); }
 
 }

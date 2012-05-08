@@ -27,7 +27,7 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.data;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,43 +35,63 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Serializable;
 
-import java.util.NavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 
 
 public class ObservationData implements Serializable {
 
 	private static final long serialVersionUID = -5017969980532748068L;
-	private NavigableMap<Double, Double> data;
-	private String varName;
-	private final File obsFile;
+	private TimeSeries data;
 	
-	public ObservationData(String path) {
-		obsFile = new File(path);
-	}
+	public ObservationData() {};
 	
-	public void init() throws IOException {
+	public ObservationData(String path, Set<String> paramNames) throws IOException  {
+		File obsFile = new File(path);
 		BufferedReader fr = new BufferedReader(new FileReader(obsFile));
 		String line = fr.readLine();
-		String[] tokens = line.split("\\s+");
-		data = new ConcurrentSkipListMap<Double, Double>();
+		double time;
+		List<String> tokens;
+		List<String> heading = Arrays.asList(line.trim().split("\\s+"));
+		int lineCount = 1;
 		
-		if (tokens.length != 2) throw new BrokenDataException(
-				obsFile.getAbsolutePath() + ": \"" + line + "\": Invalid column header.");
-		varName = tokens[1];
+		if (!(heading.get(0).equals("Time")))
+			throw new BrokenDataException(obsFile.getAbsolutePath() + ":\""
+					+ lineCount + "\": The first column heading must be \"Time\".");
+		
+		for (String paramName : paramNames)
+			if (!heading.contains(paramName)) throw new BrokenDataException(
+					obsFile.getAbsolutePath() + ": line " + lineCount
+					+ ": Missing parameter: " + paramName);
+		
+		data = new TimeSeries();
 		
 		while ((line = fr.readLine()) != null) {
-			tokens = line.split("\\s+");
-			if (tokens.length == 2 && NumericString.isValid(tokens[0])
-					&& NumericString.isValid(tokens[1]))
-				data.put(Double.parseDouble(tokens[0]), Double.parseDouble(tokens[1]));
-			else
+			lineCount++;
+			tokens = Arrays.asList(line.trim().split("\\s+"));
+			if (tokens.size() != paramNames.size() + 1)
 				throw new BrokenDataException(obsFile.getAbsolutePath() +
-						": \"" + line + "\": Invalid data row.");
+						": line " + line + ": Length of data row doesn't match heading.");
+
+			for (String s : tokens)
+				if (!NumericString.isValid(s))
+					throw new BrokenDataException(obsFile.getAbsolutePath()
+							+ ": line " + lineCount + ": invalid value: "
+							+ s);
+
+			time = Double.parseDouble(tokens.get(0));
+
+			DoubleSample params = new DoubleSample();
+			for (int i = 1; i < tokens.size(); i++)
+				params.put(heading.get(i), Double.parseDouble(tokens.get(i++)));					
+
+			data.put(time, params);
 		}
+		fr.close();
 	}
-	
-	public String getVarName() { return varName; }
-	public NavigableMap<Double, Double> getData() { return data; }
+		
+	public TimeSeries getData() { return data; }
+	public void setData(TimeSeries data) { this.data = data; }
 
 }

@@ -27,7 +27,7 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.output;
 
 public class IncompleteModelOutput extends EmptyModelOutput {
 

@@ -27,52 +27,49 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.output;
 
 import java.io.Serializable;
 
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import org.modcal.data.ObservationData;
+import org.modcal.data.TimeSeries;
 
 
-public class CalibrationRequest implements Serializable {
 
-	private static final long serialVersionUID = -2597598653633316302L;
-	private Sampler<?> sampler;
-	private Model<? extends ModelInput> model;
-	private List<ModelOutput> result;
-	private int iteration;
-	private ObservationData observed;
-	private boolean finished = false;
+public class EmptyModelOutput extends ModelOutput implements Serializable {
 	
-	public CalibrationRequest(Sampler<?> sampler, Model<? extends ModelInput> model, String observedPath) {
-		this.sampler = sampler;
-		this.model = model;
-		iteration = 1;
-		result = Collections.synchronizedList(new LinkedList<ModelOutput>());
-		observed = new ObservationData(observedPath);
+	private static final long serialVersionUID = -1469199341173045753L;
+
+	public EmptyModelOutput() {}
+	
+	public String toString() {
+		return getIteration() + ": no result (timeout reached)";
+	}
+	public String shortInfo() {
+		return "Iteration #" + toString();
 	}
 	
-	public void incIteration() { iteration++; }
-	public int getIteration() { return iteration; }
-	
-	public Sampler<?> getSampler() { return sampler; }
-	public Model<? extends ModelInput> getModel() { return model; }
-	
-	public List<ModelOutput> getResult() { return result; }
-	
-	public ModelOutput getCurrentOutput() {
-		return result.get(result.size()-1);
+	@Override
+	public int compareRSquared(ModelOutput o) {
+		return Integer.MIN_VALUE;
 	}
 	
-	public void addResult(ModelOutput r) {
-		result.add(r);
+	public int compareNS(ModelOutput o) {
+		return Integer.MIN_VALUE;
 	}
 	
-	public boolean isFinished() { return finished; }
-	public void setFinished() { finished = true; }
+	public void mapObservation(ObservationData obs) {}
 
-	public ObservationData getObserved() { return observed; }
+	public TimeSeries getOutput() {
+		return null;
+	}
+
+	public Double getRSquared() {
+		return Double.MIN_VALUE;
+	}
+
+	public Double getNS() {
+		return Double.MIN_VALUE;
+	}
 
 }

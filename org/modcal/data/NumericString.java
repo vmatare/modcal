@@ -27,13 +27,41 @@
  *   
  */
 
-package org.modcal;
+package org.modcal.data;
 
-import java.io.IOException;
-
-
-public interface ModelInput {
+public class NumericString implements CharSequence {
 	
-	public abstract void useSample(ParameterSample<?> data) throws IOException;
+	private final String value;
+	
+	public NumericString(CharSequence s) {
+		String tmp;
+		tmp = s.toString();
+		Double.valueOf(tmp);
+		this.value = tmp.replaceFirst("0+$", "");
+	}
+
+	public static boolean isValid(String s) {
+		try {
+			Double.valueOf(s);
+			return true;
+		}
+		catch (NumberFormatException e) {
+			return false;
+		}
+	}
+	
+/*	public static String pad(Number v, int len) {
+		return String.format("% " + len + "g", v);
+	} */
+	
+	public char charAt(int index) { return value.charAt(index); }
+	public int length() { return value.length(); }
+
+	public CharSequence subSequence(int start, int end) {
+		return value.subSequence(start, end);
+	}
+
+	public String getValue() { return value; }
+	public String toString() { return value.toString(); }
 
 }
