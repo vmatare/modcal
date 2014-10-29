@@ -32,7 +32,9 @@ package org.modcal;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -40,6 +42,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.modcal.data.NumericSample;
 import org.modcal.data.ObservationData;
+import org.modcal.model.ColfracController;
 import org.modcal.model.Hydrus1DController;
 import org.modcal.model.Sufi2Sampler;
 import org.modcal.output.CalibrationResult;
@@ -47,38 +50,29 @@ import org.modcal.output.ModelOutput;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleException;
 import org.mule.api.client.LocalMuleClient;
+import org.mule.api.registry.RegistrationException;
 import org.mule.config.spring.SpringXmlConfigurationBuilder;
 import org.mule.context.DefaultMuleContextFactory;
 
 public class ModCal {
 	
-	public static final String help = 
-"\nUsage: modcal.bat HYDRUS_DATA OBSERVED\n\n" +
-" HYDRUS_DATA The directory which contains the Hydrus 1D data files.\n\n" +
-" OBSERVED    Path to the file which contains the observed (measured) data.\n" +
-"             This file must be a tab- or space-delimited two-column table.\n" +
-"             The first row must specify the parameter names, the first of\n" +
-"             which must be \"Time\". The second is one of Hydrus 1D's output\n" +
-"             parameters. The name must exactly match the name of a parameter\n" +
-"             in T_LEVEL.OUT.\n\n";
-	
 	MuleContext muleContext;
-	LocalMuleClient muleClient;
-	ObservationData observation;
+	ObservationData h1dObservation, colfracObservation;
 	
 	public static void main(String[] args) throws Exception {
-		System.out.println("\nModCal 1.1 - (C) 01-2012 Victor Matare");
-		System.out.println(  "=======================================");
-		
-		if (args.length != 2) {
-			System.out.println(help);
-			return;
-		}
+		System.out.println("\nModCal 1.3 - (C) 09-2012 Victor Matare");
+		System.out.println("=======================================");
 		
 		ModCal modcal = null;
+		modcal = new ModCal();
 		try {
-			modcal = new ModCal(args[0], args[1]);
-			if (Settings.getString("Modcal.sampler").equalsIgnoreCase("SUFI2")) modcal.run();
+			if (Boolean.valueOf(Settings.getString("Hydrus1D.enabled")))
+				modcal.initHydrus1D();
+			
+			if (Boolean.valueOf(Settings.getString("Colfrac.enabled")))
+				modcal.initColfrac();
+			
+			if (Settings.getString("Modcal.sampler").equalsIgnoreCase("SUFI2")) modcal.sampleSufi2();
 			else {
 				System.out.println("Waiting for external sampler...");
 				while (System.in.read() != -1);
@@ -87,18 +81,15 @@ public class ModCal {
 		catch (Exception e) {
 			e.printStackTrace();
 		}
-		finally {
-			if (modcal != null) modcal.close();
-		}
+		modcal.cleanup();
 	}
 	
-	public ModCal(String hydrusPath, String observedPath) throws Exception {
+	public ModCal() {
 		System.out.print("Starting the Mule message bus... ");
 		DefaultMuleContextFactory muleContextFactory = new DefaultMuleContextFactory();
 		SpringXmlConfigurationBuilder configBuilder;
 		try {
-			configBuilder = new SpringXmlConfigurationBuilder(
-					Settings.getString("Modcal.mule-config"));
+			configBuilder = new SpringXmlConfigurationBuilder("mule-config.xml");
 			muleContext = muleContextFactory.createMuleContext(configBuilder);
 			muleContext.start();
 		} catch (MuleException e) {
@@ -106,28 +97,47 @@ public class ModCal {
 			throw new RuntimeException("Error starting the Mule message bus!");
 		}
 		System.out.println("done.");
+	}
 		
+	private void initHydrus1D() throws IOException, RegistrationException {
 		System.out.print("Initializing and registering Hydrus 1D... ");
-		muleClient = muleContext.getClient();
-		Map<String, Set<String>> fileParams;
+		
+		Map<String, Set<String>> h1dOutputParams;
 		try {
-			fileParams = parseFileParams(
+			h1dOutputParams = parseFileParams(
 					Settings.getString("Hydrus1D.outputParams"));
 		}
 		catch (ConfigException e) {
 			System.out.println(Settings.getString("Hydrus1D.outputParams") + ": " + e.getMessage());
 			return;
 		}
-		observation = new ObservationData(
-				observedPath, unrollFileParams(fileParams));
+		h1dObservation = new ObservationData(
+				Settings.getString("Hydrus1D.observation"),
+				unrollFileParams(h1dOutputParams));
 		muleContext.getRegistry().registerObject(
-				"Hydrus1DController", new Hydrus1DController(hydrusPath, fileParams));
+				"Hydrus1DController", new Hydrus1DController(
+						Settings.getString("Hydrus1D.dataDir"), h1dOutputParams));
 		muleContext.getRegistry().registerObject(
-				"ObservationData", observation);
+				"Hydrus1D.observation", h1dObservation);
 		System.out.println("done.");
 	}
 	
-	public void close() {
+	private void initColfrac() throws IOException, RegistrationException {
+		System.out.print("Initializing and registering Colfrac... ");
+		Set<String> colfracOutputParams = parsePlainParams(Settings.getString("Colfrac.outputParams"));
+		colfracObservation = new ObservationData(
+				Settings.getString("Colfrac.observation"),
+				colfracOutputParams);
+		muleContext.getRegistry().registerObject(
+				"ColfracController", new ColfracController(
+						Settings.getString("Colfrac.path"), colfracOutputParams));
+		muleContext.getRegistry().registerObject(
+				"Colfrac.observation", colfracObservation);
+		System.out.println("done.");
+
+	}
+	
+	public void cleanup() {
 		System.out.print("Stopping the Mule message bus... ");
 		try {
 			muleContext.stop();
@@ -139,14 +149,15 @@ public class ModCal {
 	}
 	
 	
-	private void run() throws Exception {
+	private void sampleSufi2() throws Exception {
 		
 		Sufi2Sampler sampler = new Sufi2Sampler();
 		NumericSample sample;
-		CalibrationResult result = new CalibrationResult(observation);
+		CalibrationResult result = new CalibrationResult(h1dObservation);
 		Object payload;
 		ModelOutput output;
 		int iteration = 1;
+		LocalMuleClient muleClient = muleContext.getClient();
 		
 		while((sample = sampler.nextSample()) != null) {
 			System.out.print(sample + " ... ");
@@ -172,7 +183,13 @@ public class ModCal {
 		ow.close();
 		System.out.println("done.");
 	}
-		
+	
+	/**
+	 * @param line in FILENAME:param1,param2,[...] [...] syntax
+	 * @return a {@link Map} with the filename as a key and the {@link Set} of
+	 * parameter names in that file as a value
+	 * @throws ConfigException
+	 */
 	private Map<String, Set<String>> parseFileParams(String line) throws ConfigException {
 		Map<String, Set<String>> rv = new ConcurrentSkipListMap<String, Set<String>>();
 		
@@ -192,6 +209,11 @@ public class ModCal {
 			}
 		}
 		
+		return rv;
+	}
+	
+	private Set<String> parsePlainParams(String line) {
+		Set<String> rv = new CopyOnWriteArraySet<String>(Arrays.asList(line.trim().split("\\s")));
 		return rv;
 	}
 	

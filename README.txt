@@ -36,71 +36,45 @@ By running this program you state your agreement with these terms.
 =====================
 
 ModCal stands for Model Calibration. It is used to "brute-force" the input
-parameters of a numeric model for which only the desired output is known.
+parameters of a numeric model for which only the desired output is known. This
+method is also known as "Monte-Carlo" simulation.
 
-ModCal uses SUFI2_LH_sample.exe from the SUFI2 package to generate samples of
-input data which are run through a numeric model (at the moment, only Hydrus 1D
-is implemented). Each simulated result from the model is then compared to
-previously-measured values. The input sample that generates the best-matching
-simulation output could then be assumed to match the real conditions most
-closely.
+ModCal can use SUFI2_LH_sample.exe from the SUFI2 package to generate samples of
+input data, or communicate with an external calibration tool via a SOAP interface.
 
 Note that the archive you downloaded also includes the Mule Enterprise Service
 Bus (see below), which uses a different license. You can find the mule
 distribution along with its license in the subdirectory called
-mule-standalone-3.1.0.
+mule-standalone-3.2.1.
 
 
 
 2. How to install
 =================
 
-Prerequisites:
-- A working Java Runtime Environment
-- SUFI2_LH_sample.exe including required input files
-- Hydrus 1D
-
-ModCal has only been tested with Java 6. You can't compile it on versions
-earlier than 5 because it uses generics, but it may still be able to run.
-
-You need to tell ModCal where it can find the SUFI2 sampler and which Hydrus 1D
-executable it should use. To do this, edit the file modcal.properties and
-change the variables Sufi2Sampler.path and Hydrus1DController.path to match
-your setup.
-
-Note that Sufi2Sampler.path refers to a directory, while
-Hydrus1DController.path refers to the executable file which generates the model
-output. Also bear in mind that you may need to change this depending on the
-type of model you want to run. See the Hydrus 1D manual to learn about the
-differences between the executables.
+As you've probably already unpacked the archive, you just need to edit
+modcal.properties to suit your setup.
 
 
 
 3. How to use
 =============
 
-3.1 Prepare your Hydrus 1D input
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-See the Hydrus 1D manual for how to do that. In the end you need a suitable
-file called Selector.in and you need to know which Hydrus 1D executable to use
-with it (as mentioned above).
+When you provide input parameter names in whichever sample generator you're
+using, there are different special notations for Hydrus 1D and Colfrac
+parameters.
 
-
-3.2 Edit par_inf.sf2
-^^^^^^^^^^^^^^^^^^^^
+3.1a Defining Hydrus 1D Parameter Names
+---------------------------------------
 The names of all variables must be suffixed with a dot followed by an integer
 number >= 1. This number designates the horizon into which the parameter is to
 be inserted. Horizons are counted from top to bottom.
 
 Example:
 
-A line in par_inf.sf2:
-
- Alfa.2  0.01  0.3
-
-Means that the values generated for Alfa.2 are inserted as Alfa values in the
-second horizon of the Hydrus 1D input file. Suppose Alfa.2 gets a value of
-0.24242. Then in the Hydrus 1D input file (Selector.in)
+A Variable named Alfa.2 with a value of 0.24242 will be inserted as Alfa values
+in the second horizon of the Hydrus 1D input file. Then in the Hydrus 1D input
+file (Selector.in)
 
   thr     ths    Alfa      n         Ks       l
   0.09    0.29   0.26375   1.1675    0.8425   0.5 
@@ -113,8 +87,18 @@ would become
   0       1      0.24242     1.001     0.01     0.5
 
 
-3.3 Provide an observed (measured) time series
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3.1b Defining Colfrac Parameter Names
+-------------------------------------
+Due to the absurd syntax of the Colfrac input file, parameters cannot be
+addressed by name. Instead, the parameter name encodes a row/column index. A
+parameter named #23.2 will replace the value in the second column of the 23rd
+line of the input file. Lines and columns are counted from 1, and each word
+counts as a column, i.e. anything between line breaks or spaces. We don't
+distinguish between numbers and letters, so you can create arbitrary garbage.
+
+
+3.2 Provide an observed (measured) time series
+----------------------------------------------
 This needs to be a tab-delimited table with exactly two columns. The first
 column must contain the times. The interval it covers must be a sub-interval of
 the simulated time series. The second column contains the observed values.
@@ -138,16 +122,17 @@ NOTE: You can export any table into a tab-delimited text file from most popular
 spreadsheet programs. But don't forget to delete all but the first two columns.
 
 
-3.4 Make it run
-^^^^^^^^^^^^^^^
-Open a command prompt and cd to the modcal directory. Execute "modcal" to get
-a brief help message. From here, everything should be straightforward. You
-need to specify the location of your Hydrus 1D input data and the path to the
-table with your observed data as commandline parameters.
+3.3 Running
+-----------
+Open a command prompt and cd to the modcal directory. Just running "modcal"
+should do the job.
 
-ModCal should then run the model once with each sample and tell you the
-estimated quality of the generated output (in relation to your observed
-values) after each iteration.
+
+a) Using SUFI2
+
+If you use SUFI2, ModCal should automatically run the model once with each
+sample and tell you the estimated quality of the generated output (in relation
+to your observed values) after each iteration.
 
 After all samples have been used, ModCal will store the results in modcal.out
 in the current directory (this is also customizable in modcal.properties).
@@ -160,12 +145,20 @@ determination R^2. To find out the input parameters that were used in a
 specific iteration you have to look in par_val.sf2 in SUFI2.IN.
 
 
+b) Using an external sampler
+
+If you set "Modcal.sampler =" in modcal.properties, modcal will just say
+"Waiting for external sampler". Now fire up your DREAM_ZS and have a suitable
+startup configuration handy. See the DREAM_ZS startup file for details on the
+configuration.
+
+
 
 4. Technical details / Extensibility
 ====================================
 
 4.1 Intersection/Interpolation of simulated and observed values
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------------------------------------
 Normally, the times at which you measured won't exactly match the times in the
 simulated series. Thus, ModCal computes a linear interpolation of the two
 simulated values before and after each measurement. This interpolated value is
@@ -173,18 +166,18 @@ then matched against the measured value.
 
 
 4.2 The Mule Enterprise Service Bus
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------
 At the heart of ModCal is the Mule ESB. See http://www.mulesoft.org for more
-info on Mule. Essentially, Mule is a very versatile messaging framework that
-can transport messages over a wide variety of protocols, including HTTP,
-TCP/IP, SSL, XMPP and even e-Mail. This means that the entire calibration
-process is modeled as an exchange of messages between the sampler, the model
-and the user interface. This in turn leads to great flexibility in terms of
-deployment and control flow, which leads us to:
+info on Mule. Essentially, Mule is a very versatile messaging framework that can
+transport messages over a wide variety of protocols, including HTTP, TCP/IP,
+SSL, XMPP and even e-Mail. This means that the entire calibration process is
+modeled as an exchange of messages between the sampler and the model. This in
+turn leads to great flexibility in terms of deployment and control flow, which
+leads us to:
 
 
 4.3 Deployment options
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 So far this has never been tested, but in principle it should require only
 minimal hacking to have each component of the calibration process run on a
 different machine:
@@ -195,9 +188,9 @@ different machine:
                            |n
                            |
                            |
-                           |1
+                           |n
 -----------          ------------            ---------
-|         |1        1|          |1       1..n|       |
+|         |1..n     1|          |1       1..n|       |
 | Sampler |----------| Mule ESB |------------| Model |
 |         |          |          |            |       |
 -----------          ------------            ---------
@@ -206,21 +199,12 @@ The multiplicities suggest options for:
 
 
 4.4 Parallelization
-^^^^^^^^^^^^^^^^^^^
-Besides complete network transparency, the inversion of control principle
-imposed by Mule also facilitates parallelization. The software can be easily
-extended to dispatch multiple parameter samples to multiple instances of the
-model in parallel. In this scenario, your use of computing power is only
-limited by the messaging throughput your Mule server can handle. Note that this
-is not yet implemented, but fairly easy to achieve. 
-
-
-4.5 Use of other samplers or models
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ModCal operates the sampler and the model through abstract interfaces. This
-means that plugging different samplers or models into ModCal is mainly a matter
-of adapting them to the very simple Sampler or Model interfaces used by ModCal.
-
+-------------------
+The only thing keeping you from unleashing the true power of your 64 core
+compute server on your hydrogeological models is the lack of a decent sample
+generator (i.e. calibration tool) that can dispatch multiple samples before
+receiving any result. Extending DREAM_ZS to do that should be possible with
+moderate effort (hint hint :-).
 
 
 5. Support and bugs
@@ -229,6 +213,7 @@ of adapting them to the very simple Sampler or Model interfaces used by ModCal.
 If you think you've found a defect or have a technical question regarding ModCal,
 send a mail to my last name at lih dot rwth dash aachen dot de (without the
 accent of course). 
+
 
 
 6. Credits

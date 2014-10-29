@@ -56,7 +56,7 @@ public class ObservationData implements Serializable {
 		List<String> heading = Arrays.asList(line.trim().split("\\s+"));
 		int lineCount = 1;
 		
-		if (!(heading.get(0).equals("Time")))
+		if (!(heading.get(0).equalsIgnoreCase("time")))
 			throw new BrokenDataException(obsFile.getAbsolutePath() + ":\""
 					+ lineCount + "\": The first column heading must be \"Time\".");
 		

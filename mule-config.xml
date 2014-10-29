@@ -11,23 +11,21 @@
           http://www.mulesoft.org/schema/mule/cxf http://www.mulesoft.org/schema/mule/cxf/3.1/mule-cxf.xsd">
 
 	<!-- This is where you put in samples and receive the result: -->
-	<vm:endpoint name="SamplerVM" path="Sampler" />
-	<http:endpoint name="SamplerHTTP" host="localhost" port="3080"
-		path="Hydrus1DService" />
+	<vm:endpoint name="HydrusVM" path="Sampler" />
+	<http:endpoint name="ModelHTTP" host="localhost" port="3080"
+		path="ModelService" />
 
-
-	<flow name="SimulateLocal">
-		<vm:inbound-endpoint ref="SamplerVM"
+	<flow name="HydrusLocal">
+		<vm:inbound-endpoint ref="HydrusVM"
 			exchange-pattern="request-response" />
 		<component class="org.modcal.model.RunHydrus1D" />
 	</flow>
-
-	<flow name="SimulateHTTP">
-		<http:inbound-endpoint ref="SamplerHTTP">
-			<cxf:jaxws-service serviceClass="org.modcal.model.Hydrus1D"/>
-				<!-- wsdlLocation="Hydrus1DService.wsdl" /> -->
+	
+	<flow name="ModelService">
+		<http:inbound-endpoint ref="ModelHTTP">
+			<cxf:jaxws-service serviceClass="org.modcal.model.NameValueModel"/>
 		</http:inbound-endpoint>
-		<component class="org.modcal.model.RunHydrus1DWeb" />
+		<component class="org.modcal.model.RunModelWeb" />
 	</flow>
 
 </mule>

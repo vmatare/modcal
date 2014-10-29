@@ -59,7 +59,7 @@ import org.modcal.output.EmptyModelOutput;
 import org.modcal.output.Hydrus1DOutput;
 import org.modcal.output.ModelOutput;
 
-public class Hydrus1DController implements ConfiguredModel<NumericSample> {
+public class Hydrus1DController implements NumericModel {
 	
 	private final String dataPath, h1dExe;
 	private long timeout;
@@ -95,7 +95,7 @@ public class Hydrus1DController implements ConfiguredModel<NumericSample> {
 		pb.redirectErrorStream(true);
 		h1dProcess = pb.start();
 		
-		KillHydrus1D killer = new KillHydrus1D(h1dProcess);
+		TimedKiller killer = new TimedKiller(h1dProcess);
 		h1dTimer = new Timer("Hydrus1DTimer");
 		h1dTimer.schedule(killer, timeout); // starts a timer thread
 
